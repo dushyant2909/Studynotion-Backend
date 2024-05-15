@@ -4,6 +4,13 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
+app.get("/", (req, res) => {
+    return res.json({
+        success: true,
+        message: "Welcome to studynotion || Server running fine"
+    })
+})
+
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true
