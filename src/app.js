@@ -35,7 +35,7 @@ app.use(express.static("public")) // Here public is folder name
 app.use(cookieParser());
 
 // Routes
-// import userRoutes from "./routes/User.routes.js";
+import userRoutes from "./routes/user.routes.js";
 // import subscriptionRoutes from "./routes/subscription.routes.js";
 // import videoRouter from "./routes/video.routes.js";
 // import likeRouter from "./routes/like.routes.js";
@@ -44,7 +44,7 @@ app.use(cookieParser());
 // import playlistRouter from "./routes/playlist.routes.js";
 
 // Routes declaration
-// app.use("/api/v1/users", userRoutes)
+app.use("/api/v1/users", userRoutes)
 // app.use("/api/v1/subscriptions", subscriptionRoutes)
 // app.use("/api/v1/videos", videoRouter)
 // app.use("/api/v1/like", likeRouter)

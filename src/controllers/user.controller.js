@@ -1,12 +1,12 @@
-import { User } from "../models/user.model";
-import { asyncHandler } from "../utils/asyncHandler";
-import ApiError from "../utils/ApiError";
-import ApiResponse from "../utils/ApiResponse";
+import { User } from "../models/user.model.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
 
 import validator from "validator"
 import otpGenerator from "otp-generator"
-import jwt from "jsonwebtoken"
-import { OTP } from "../models/otp.model";
+import { OTP } from "../models/otp.model.js";
+import { Profile } from "../models/profile.model.js";
 
 // Method to generate access and refresh token
 const generateAccessAndRefreshToken = async (userId) => {
@@ -15,7 +15,10 @@ const generateAccessAndRefreshToken = async (userId) => {
         const user = await User.findOne(userId);
 
         if (!user)
-            throw new ApiError(401, "User not found")
+            return res.status(401).json({
+                success: false,
+                message: "User not found"
+            })
 
         // S-2 Generate tokens from the methods defined in userSchema
         const accessToken = user.generateAccessToken();
@@ -36,55 +39,141 @@ const generateAccessAndRefreshToken = async (userId) => {
 }
 
 const sendOTP = asyncHandler(async (req, res) => {
-    const { email } = req.body;
+    try {
+        const { email } = req.body;
 
-    if (!email)
-        throw new ApiError(400, "Email is required for otp")
+        if (!email)
+            return res.status(400).json({
+                success: false,
+                message: "Email is required for sending OTP"
+            })
 
-    if (!validator.isEmail(email))
-        throw new ApiError(400, "Invalid email format")
+        if (!validator.isEmail(email))
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect email format"
+            })
 
-    // Check if user already registered
-    const user = await User.findOne(email);
+        // Check if user already registered
+        const user = await User.findOne({ email });
 
-    if (user)
-        throw new ApiError(401, "User already registered")
+        if (user)
+            return res.status(401).json({
+                success: false,
+                message: "User already registered, kindly login"
+            })
 
-    // Generate otp
-    const otp = otpGenerator.generate(6, {
-        upperCaseAlphabets: false,
-        lowerCaseAlphabets: false,
-        specialChars: false
-    })
+        // Generate otp
+        const otp = otpGenerator.generate(6, {
+            upperCaseAlphabets: false,
+            lowerCaseAlphabets: false,
+            specialChars: false
+        })
 
-    // Store otp
-    const otpStoreResponse = await OTP.create({
-        email,
-        otp
-    })
+        // Store otp
+        await OTP.create({
+            email,
+            otp
+        })
 
-    if (!otpStoreResponse)
-        throw new ApiError(500, "Error in storing otp to Database")
+        // Return response successfully
+        return res.status(200).json(
+            new ApiResponse(200, {}, "Otp Created and stored successfully")
+        )
 
-    // Return response successfully
-    new ApiResponse(201, otp, "OTP Generated successfully")
+    } catch (error) {
+        console.log("Error in otp controller::", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to store otp, please try again"
+        })
+    }
+
 })
 
 const signup = asyncHandler(async (req, res) => {
-    const { firstName, lastName, email, password, confirmPassword, accountType, otp } = req.body
-    //otp will be provided by user for validation in req.body
+    try {
+        const { firstName, lastName, email, password, confirmPassword, accountType, otp } = req.body
+        //otp will be provided by user for validation in req.body
 
-    if (!firstName || !lastName || !email || !password || !confirmPassword || !otp) {
-        throw new ApiError(403, "All fields are required")
+        if (!firstName || !lastName || !email || !password || !confirmPassword || !otp) {
+            return res.status(403).json({
+                success: false,
+                message: "All Fields are required",
+            });
+        }
+
+        if (!validator.isEmail(email))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email format"
+            })
+
+        if (password !== confirmPassword)
+            return res.status(400).json({
+                success: false,
+                message: "Password and confirm password do not match"
+            })
+
+        const user = await User.findOne({ email });
+
+        if (user) {
+            return res.status(400).json({
+                success: false,
+                message: "User already exists. Please sign in to continue.",
+            });
+        }
+
+        // Find the most recent OTP for the email
+        const response = await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
+
+        if (response.length === 0 || otp !== response[0].otp) {
+            // OTP not found for the email or invalid
+            return res.status(400).json({
+                success: false,
+                message: "The OTP is not valid",
+            });
+        }
+
+        let approved = false;
+        approved = accountType === "Instructor" ? false : true;
+
+        // Create a fake profile for user
+        const profile = await Profile.create({
+            gender: null,
+            dateOfBirth: null,
+            about: null,
+            contactNumber: null,
+        });
+
+        const imageSeed = `${firstName} ${lastName}`.replace(/\s+/g, '%20');
+
+        const userResponse = await User.create({
+            firstName,
+            lastName,
+            email,
+            password,
+            accountType,
+            approved,
+            additionalDetails: profile,
+            image: `https://api.dicebear.com/5.x/initials/svg?seed=${imageSeed}`,
+        })
+
+        // Remove the password field from userResponse
+        delete userResponse.password;
+
+        return res.status(200).json(
+            new ApiResponse(200, userResponse, "User registered successfully")
+        )
+
+    } catch (error) {
+        console.error("Error in signup controller::", error);
+        return res.status(500).json({
+            success: false,
+            message: "User cannot be registered. Please try again.",
+        });
     }
 
-    if (!validator.isEmail(email))
-        throw new ApiError(400, "Invalid email format")
-
-    if (password !== confirmPassword)
-        throw new ApiError(400, "Password and confirm password do not match")
-
-    const user = await User.findOne(email);
 })
 
 
