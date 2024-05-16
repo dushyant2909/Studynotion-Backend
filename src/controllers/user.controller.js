@@ -176,5 +176,77 @@ const signup = asyncHandler(async (req, res) => {
 
 })
 
+const login = asyncHandler(async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-export { generateAccessAndRefreshToken, sendOTP, signup }
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: `All fields are required`,
+            });
+        }
+
+        if (!validator.isEmail(email))
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email format"
+            })
+
+        const user = await User.findOne({ email })
+
+        if (!user)
+            return res.status(401).json({
+                success: false,
+                message: `User not found, Kindly register your account`,
+            });
+
+        const passwordCheck = await user.isPasswordCorrect(password);
+
+        if (!passwordCheck)
+            return res.status(401).json({
+                success: false,
+                message: `Incorrect Password`,
+            });
+
+        const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+
+        // Generate cookies
+        const options = {
+            httpOnly: true,
+            secure: true // Modified only by server not by frontend
+        }
+
+        user.token = refreshToken;
+
+        await user.save()
+
+        return res.status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    {
+                        accessToken,
+                        refreshToken
+                    },
+                    "User logged in successfully"
+                )
+            )
+
+    } catch (error) {
+        console.log("Error in otp controller::", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to login, please try again"
+        })
+    }
+})
+
+export {
+    generateAccessAndRefreshToken,
+    sendOTP,
+    signup,
+    login
+}

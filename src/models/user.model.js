@@ -84,7 +84,13 @@ userSchema.pre("save", async function (next) {
 // Created some functions for utilities
 // Compare password using bcrypt
 userSchema.methods.isPasswordCorrect = async function (password) {
-    return await bcrypt.compare(password, this.password);
+    try {
+        return await bcrypt.compare(password, this.password);
+
+    } catch (error) {
+        console.log("Error in comparing password::", error);
+        throw error
+    }
 }
 
 // Cookies-token generator
@@ -96,6 +102,7 @@ userSchema.methods.generateAccessToken = function () {
             fullName: this.fullName,
             lastName: this.lastName,
             email: this.email,
+            accountType: this.accountType
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
