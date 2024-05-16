@@ -1,10 +1,15 @@
 import { Router } from "express";
-import { login, sendOTP, signup } from "../controllers/user.controller.js";
+import { getCurrentUser, login, logout, sendOTP, signup } from "../controllers/user.controller.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js"
 
 const userRoutes = Router()
 
 userRoutes.route("/register").post(signup)
 userRoutes.route("/sendOtp").post(sendOTP);
 userRoutes.route("/login").post(login);
+
+userRoutes.use(verifyJWT)
+userRoutes.route("/get-current-user").get(getCurrentUser)
+userRoutes.route("/logout").post(logout);
 
 export default userRoutes;

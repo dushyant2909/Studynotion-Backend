@@ -236,7 +236,7 @@ const login = asyncHandler(async (req, res) => {
             )
 
     } catch (error) {
-        console.log("Error in otp controller::", error);
+        console.log("Error in Signup controller::", error);
         return res.status(500).json({
             success: false,
             message: "Failed to login, please try again"
@@ -244,9 +244,64 @@ const login = asyncHandler(async (req, res) => {
     }
 })
 
+const getCurrentUser = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.user?._id;
+        const user = await User.findById({ _id: userId })
+            .select("-password");
+
+        if (!user)
+            return res.status(401).json({
+                status: "false",
+                message: "User not found"
+            })
+
+        return res.status(200)
+            .json(
+                new ApiResponse(200, user, "User fetched successfully")
+            )
+
+    } catch (error) {
+        console.log("Error in Get-current-user controller::", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch current logged in user, try again"
+        })
+    }
+})
+
+const logout = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset: {
+                token: 1
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true // Modified only by server not by frontend
+    }
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(
+            new ApiResponse(200, "User-logged out successfully")
+        )
+})
+
 export {
     generateAccessAndRefreshToken,
     sendOTP,
     signup,
-    login
+    login,
+    getCurrentUser,
+    logout
 }

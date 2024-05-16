@@ -1,12 +1,12 @@
-import { User } from "../models/user.model";
-import ApiError from "../utils/ApiError";
-import { asyncHandler } from "../utils/asyncHandler";
+import { User } from "../models/user.model.js";
+import ApiError from "../utils/ApiError.js";
 import jwt from "jsonwebtoken"
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 // Take user details from access token and find user
 // Set user to request
 
-export const verifyJWT = asyncHandler(async (req, next) => {
+export const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
         // Token ka access lena h
         // Request ke paas cookies ka access h
@@ -14,7 +14,10 @@ export const verifyJWT = asyncHandler(async (req, next) => {
         const accessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
 
         if (!accessToken) {
-            throw new ApiError(401, "Unauthorized request")
+            return res.status(401).json({
+                status: "false",
+                message: "Unauthorised user"
+            })
         }
 
         // If token present then check using jwt
@@ -28,12 +31,13 @@ export const verifyJWT = asyncHandler(async (req, next) => {
         req.user = user;
         next();
     } catch (error) {
+        console.log("Error in verifyJWT::", error);
         throw new ApiError(401, error?.message || "Invalid access token");
     }
 })
 
 // Authorization middleware
-export const isStudent = asyncHandler(async (req, next) => {
+export const isStudent = asyncHandler(async (req, res, next) => {
     try {
         if (req.user.accountType !== "Student") {
             return new ApiError(401, "This protected route is only available to students")
@@ -45,7 +49,7 @@ export const isStudent = asyncHandler(async (req, next) => {
     }
 })
 
-export const isInstructor = asyncHandler(async (req, next) => {
+export const isInstructor = asyncHandler(async (req, res, next) => {
     try {
         if (req.user.accountType !== "Instructor") {
             return new ApiError(401, "This protected route is only available to instructor")
