@@ -308,7 +308,6 @@ const logout = asyncHandler(async (req, res) => {
     }
 })
 
-
 const changePassword = asyncHandler(async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
@@ -372,6 +371,114 @@ const changePassword = asyncHandler(async (req, res) => {
     }
 })
 
+const resetPasswordToken = asyncHandler(async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email)
+            return res.status(404).json({
+                success: "false",
+                message: "Email is required"
+            })
+
+        const user = await User.findOne({ email })
+
+        if (!user)
+            return res.status(401).json({
+                success: "false",
+                message: "User not found with this email id"
+            })
+
+        const resetPasswordToken = await user.generateRefreshToken()
+
+        await User.findOneAndUpdate(
+            { email },
+            {
+                token: resetPasswordToken,
+                resetPasswordExpires: Date.now() + 3600000,
+            },
+            { new: true }
+        );
+
+        const url = `https://study-notion-lake.vercel.app/update-password/${resetPasswordToken}`;
+
+        try {
+            await emailSenderUtility(
+                email,
+                "Password reset link",
+                `Your Link for email verification is ${url}. Please click this url to reset your password.`
+            )
+        } catch (error) {
+            // If there's an error updating the password, log the error and return a 500 (Internal Server Error) error
+            console.error("Error occurred while updating password:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Error occurred while sending reset-password-token email",
+                error: error.message,
+            });
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200,
+                resetPasswordToken,
+                "Email sent successfully, Check it to continue further "
+            )
+        )
+    } catch (error) {
+        console.log("Error in resetPasswordToken Controller::", error);
+        return res.json({
+            success: false,
+            message: `Error in reset password controller`,
+            error: error.message,
+        });
+    }
+})
+
+const resetPassword = asyncHandler(async (req, res) => {
+    try {
+        const { password, token } = req.body;
+
+        if (!password || !token)
+            return res.status(401).json({
+                success: "false",
+                message: "All fields are required"
+            })
+
+        const user = await User.findOne({
+            token
+        })
+
+        if (!user)
+            return res.status(400).
+                json({
+                    success: false,
+                    message: "Token is Invalid",
+                });
+
+        if (!(user.resetPasswordExpires > Date.now()))
+            return res.status(403).json({
+                success: false,
+                message: `Token is Expired, Please Regenerate Your Token`,
+            });
+
+        user.password = password
+
+        await user.save({ validateBeforeSave: false })
+
+        return res.status(200).json({
+            success: true,
+            message: `Password Reset Successful`,
+        });
+    } catch (error) {
+        console.log("Error in reset password controller::", error);
+        return res.json({
+            success: false,
+            message: `Error in reset password controller`,
+            error: error.message,
+        });
+    }
+})
+
 export {
     generateAccessAndRefreshToken,
     sendOTP,
@@ -379,5 +486,7 @@ export {
     login,
     getCurrentUser,
     logout,
-    changePassword
+    changePassword,
+    resetPasswordToken,
+    resetPassword
 }
