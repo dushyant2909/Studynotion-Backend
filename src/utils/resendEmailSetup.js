@@ -3,7 +3,7 @@ import { Resend } from "resend";
 const resend = new Resend("re_DxxwZjnf_HgxJJZ4ZE6cUZfzpW85s3Sh2")
 
 
-export async function sendVerificationEmail(email, title, body) {
+export async function emailSenderUtility(email, title, body) {
     try {
         await resend.emails.send({
             from: "StudyNotion <onboarding@resend.dev>",

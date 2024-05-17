@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import otpTemplate from '../../emailTemplates/otpTemplate.js';
-import { sendVerificationEmail } from '../utils/resendEmailSetup.js';
+import { emailSenderUtility } from '../utils/resendEmailSetup.js';
 
 const otpSchema = new mongoose.Schema(
     {
@@ -21,10 +21,10 @@ const otpSchema = new mongoose.Schema(
 );
 
 // Schema ke baad model ke pehle use kareing pre or post
-async function emailSender(email, otp) {
+async function mailSender(email, otp) {
     try {
         // const mailResponse = await mailSender(email, "OTP Verification email from studyNotion", otpTemplate(otp));
-        const mailResponse = await sendVerificationEmail(email, "OTP verification email", otpTemplate(otp))
+        const mailResponse = await emailSenderUtility(email, "OTP verification email", otpTemplate(otp))
         console.log("Mail response::", mailResponse);
     }
     catch (error) {
@@ -34,7 +34,7 @@ async function emailSender(email, otp) {
 };
 
 otpSchema.pre("save", async function (next) {
-    await emailSender(this.email, this.otp);
+    await mailSender(this.email, this.otp);
     next();
 })
 

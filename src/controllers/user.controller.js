@@ -7,6 +7,8 @@ import validator from "validator"
 import otpGenerator from "otp-generator"
 import { OTP } from "../models/otp.model.js";
 import { Profile } from "../models/profile.model.js";
+import { emailSenderUtility } from "../utils/resendEmailSetup.js";
+import passwordChange from "../../emailTemplates/passwordChange.js";
 
 // Method to generate access and refresh token
 const generateAccessAndRefreshToken = async (userId) => {
@@ -85,7 +87,8 @@ const sendOTP = asyncHandler(async (req, res) => {
         console.log("Error in otp controller::", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to store otp, please try again"
+            message: "Failed to store otp, please try again",
+            error: error.message,
         })
     }
 
@@ -271,30 +274,102 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 })
 
 const logout = asyncHandler(async (req, res) => {
-    await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $unset: {
-                token: 1
+    try {
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $unset: {
+                    token: 1
+                }
+            },
+            {
+                new: true
             }
-        },
-        {
-            new: true
-        }
-    )
-
-    const options = {
-        httpOnly: true,
-        secure: true // Modified only by server not by frontend
-    }
-
-    return res
-        .status(200)
-        .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options)
-        .json(
-            new ApiResponse(200, "User-logged out successfully")
         )
+
+        const options = {
+            httpOnly: true,
+            secure: true // Modified only by server not by frontend
+        }
+
+        return res
+            .status(200)
+            .clearCookie("accessToken", options)
+            .clearCookie("refreshToken", options)
+            .json(
+                new ApiResponse(200, "User-logged out successfully")
+            )
+    } catch (error) {
+        console.log("Error in Logout controller::", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to logout, try again"
+        })
+    }
+})
+
+
+const changePassword = asyncHandler(async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+
+        if (!oldPassword || !newPassword)
+            return res.status(401).json({
+                success: "false",
+                message: "ALl fields are required"
+            })
+
+        const userId = req.user?._id;
+
+        const user = await User.findById({
+            _id: userId
+        })
+
+        const oldPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+        if (!oldPasswordCorrect)
+            return res.status(401).json({
+                success: "false",
+                message: "Incorrect old password"
+            })
+
+        user.password = newPassword
+
+        await user.save({ validateBeforeSave: false })
+
+        // Send password update e-mail
+        try {
+            const mailResponse = await emailSenderUtility(req.user.email,
+                "Password Changed Successfully",
+                passwordChange(
+                    user.email,
+                    `${user.firstName} ${user.lastName}`
+                ))
+
+            console.log("Mail response::", mailResponse);
+        } catch (error) {
+            // If there's an error updating the password, log the error and return a 500 (Internal Server Error) error
+            console.error("Error occurred while updating password:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Error occurred while updating password",
+                error: error.message,
+            });
+        }
+
+        return res.status(200)
+            .json(
+                new ApiResponse(true, {}, "Password changed successfully")
+            )
+
+    } catch (error) {
+        console.log("Error in Change password controller::", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to change password, try again",
+            error: error.message
+        })
+    }
 })
 
 export {
@@ -303,5 +378,6 @@ export {
     signup,
     login,
     getCurrentUser,
-    logout
+    logout,
+    changePassword
 }
