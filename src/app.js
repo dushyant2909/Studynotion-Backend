@@ -37,9 +37,11 @@ app.use(cookieParser());
 // Routes
 import userRoutes from "./routes/user.routes.js";
 import contactUsRouter from "./routes/contact.routes.js";
+import tagRoutes from "./routes/tags.routes.js";
 
 // Routes declaration
 app.use("/api/v1/users", userRoutes)
 app.use("/api/v1/", contactUsRouter)
+app.use("/api/v1/admin", tagRoutes)
 
 export { app }

@@ -1,4 +1,5 @@
 import contactusResponsetemplate from "../../emailTemplates/contactUsTemplate.js";
+import { contactusCompanyEmail } from "../constants.js";
 import { Contactus } from "../models/contactUs.model.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -32,20 +33,19 @@ const contactUs = asyncHandler(async (req, res) => {
 
         try {
             const mailResponse = await emailSenderUtility(email,
-                "Contacting successfull",
+                "Contact request recieved successfully",
                 contactusResponsetemplate(contactDetails)
             )
             console.log("Email response::", mailResponse);
             // Alert to department also
-            const toEmail = "dushyantd2909@gmail.com"
 
             const sendMailToMeResponse = await emailSenderUtility(
-                toEmail,
+                contactusCompanyEmail,
                 "You got a contact us response",
                 contactusResponsetemplate(contactDetails)
             )
 
-            console.log("Email response::", sendMailToMeResponse);
+            console.log("Email to me response::", sendMailToMeResponse);
         } catch (error) {
             console.log("Error sending mail::", error);
             return res.status(400).json({

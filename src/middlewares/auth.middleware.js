@@ -40,7 +40,10 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 export const isStudent = asyncHandler(async (req, res, next) => {
     try {
         if (req.user.accountType !== "Student") {
-            return new ApiError(401, "This protected route is only available to students")
+            return res.status(401).json({
+                status: "false",
+                message: "This protected route is only for Students"
+            })
         }
         next();
     } catch (error) {
@@ -52,7 +55,10 @@ export const isStudent = asyncHandler(async (req, res, next) => {
 export const isInstructor = asyncHandler(async (req, res, next) => {
     try {
         if (req.user.accountType !== "Instructor") {
-            return new ApiError(401, "This protected route is only available to instructor")
+            return res.status(401).json({
+                status: "false",
+                message: "This protected route is only for Instructors"
+            })
         }
         next();
     } catch (error) {
@@ -64,7 +70,10 @@ export const isInstructor = asyncHandler(async (req, res, next) => {
 export const isAdmin = asyncHandler(async (req, res, next) => {
     try {
         if (req.user.accountType !== "Admin") {
-            return new ApiError(401, "This protected route is only available to admin")
+            return res.status(401).json({
+                status: "false",
+                message: "This protected route is only for Admin"
+            })
         }
         next();
     } catch (error) {
