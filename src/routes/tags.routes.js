@@ -7,6 +7,6 @@ const tagRoutes = Router()
 tagRoutes.use(verifyJWT, isAdmin);
 
 tagRoutes.route("/create-tag").post(createTag);
-tagRoutes.route("/show-all-tags").post(showAllTags)
+tagRoutes.route("/show-all-tags").get(showAllTags)
 
 export default tagRoutes
